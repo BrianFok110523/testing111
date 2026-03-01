@@ -1,0 +1,204 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Camera, Activity, Info, Trophy, ChevronRight, PlayCircle, ShieldCheck } from 'lucide-react';
+
+const App = () => {
+  const [level, setLevel] = useState('easy');
+  const [cameraActive, setCameraActive] = useState(false);
+  const [score, setScore] = useState(0);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const detectorRef = useRef(null);
+
+  // Difficulty Colors & Icons
+  const config = {
+    easy: { color: 'bg-green-500', icon: '🟢', label: '1', videos: [
+      { id: 'P9xsYEzYNrE', start: 74, end: 89 },
+      { id: 'P9xsYEzYNrE', start: 426, end: 441 }
+    ]},
+    medium: { color: 'bg-yellow-500', icon: '🟡', label: '2', videos: [
+      { id: '_ENSGw0g7VU', start: 530, end: 545 },
+      { id: '_ENSGw0g7VU', start: 126, end: 141 }
+    ]},
+    hard: { color: 'bg-red-500', icon: '🔴', label: '3', videos: [
+      { id: 'PTxQv8bLm2I', start: 135, end: 150 },
+      { id: 'qzq4hjalegc', start: 450, end: 465 }
+    ]}
+  };
+
+  // Load AI Models
+  useEffect(() => {
+    const loadAI = async () => {
+      // Load scripts dynamically
+      const tfScript = document.createElement('script');
+      tfScript.src = "https://cdn.jsdelivr.net/npm/@tensorflow/models/posenet";
+      document.head.appendChild(tfScript);
+    };
+    loadAI();
+  }, []);
+
+  const startCamera = async () => {
+    setCameraActive(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = () => {
+          detectPose();
+        };
+      }
+    } catch (err) {
+      console.error("Camera error:", err);
+    }
+  };
+
+  const detectPose = async () => {
+    // Basic simulation of Pose detection logic for UI demonstration
+    // In a production environment, this would use window.posenet.load()
+    const interval = setInterval(() => {
+      if (!cameraActive) clearInterval(interval);
+      
+      // Simulate a fluctuating score based on stability
+      const randomSway = Math.random() * 10;
+      setScore(prev => Math.min(100, Math.max(0, Math.floor(90 - randomSway))));
+
+      // Draw skeleton on canvas
+      if (canvasRef.current && videoRef.current) {
+        const ctx = canvasRef.current.getContext('2d');
+        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+        
+        // Visual indicator of joint detection (random dots for demo)
+        ctx.fillStyle = "#00FF00";
+        for(let i=0; i<5; i++) {
+          ctx.beginPath();
+          ctx.arc(Math.random()*300, Math.random()*150, 5, 0, 2 * Math.PI);
+          ctx.fill();
+        }
+      }
+    }, 100);
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans text-slate-900">
+      
+      {/* Visual Navigation Header */}
+      <div className="max-w-4xl mx-auto flex justify-between items-center mb-8 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+        <div className="flex gap-4">
+          {Object.keys(config).map((lvl) => (
+            <button
+              key={lvl}
+              onClick={() => setLevel(lvl)}
+              className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold transition-all transform ${level === lvl ? 'ring-4 ring-offset-2 ring-blue-400 scale-110 ' + config[lvl].color + ' text-white' : 'bg-slate-100 text-slate-400'}`}
+            >
+              {config[lvl].label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2 text-slate-500">
+           <ShieldCheck size={32} className="text-blue-500" />
+        </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        {/* VIDEO SECTION */}
+        <div className="space-y-6">
+          {config[level].videos.map((vid, idx) => (
+            <div key={idx} className="bg-white rounded-3xl overflow-hidden shadow-xl border-4 border-white">
+              <div className="aspect-video relative">
+                <iframe
+                  className="w-full h-full"
+                  src={`https://www.youtube.com/embed/${vid.id}?start=${vid.start}&end=${vid.end}&autoplay=1&mute=1&loop=1&playlist=${vid.id}&controls=0`}
+                  title="Exercise"
+                  frameBorder="0"
+                />
+                <div className="absolute top-2 left-2 bg-black/50 text-white px-3 py-1 rounded-full text-xs flex items-center gap-1">
+                  <PlayCircle size={14} /> {config[level].icon}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* AI CAMERA & SCORE SECTION */}
+        <div className="space-y-6">
+          <div className="bg-slate-900 rounded-3xl aspect-video relative overflow-hidden shadow-2xl flex flex-col items-center justify-center border-4 border-slate-800">
+            {!cameraActive ? (
+              <button 
+                onClick={startCamera}
+                className="group flex flex-col items-center gap-4 text-white hover:text-blue-400 transition-colors"
+              >
+                <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Camera size={40} />
+                </div>
+                <span className="text-xl font-bold uppercase tracking-widest">Start</span>
+              </button>
+            ) : (
+              <>
+                <video 
+                  ref={videoRef} 
+                  autoPlay 
+                  playsInline 
+                  className="absolute inset-0 w-full h-full object-cover opacity-60"
+                />
+                <canvas 
+                  ref={canvasRef}
+                  className="absolute inset-0 w-full h-full z-10"
+                  width="400"
+                  height="300"
+                />
+                
+                {/* Visual HUD */}
+                <div className="absolute top-4 right-4 z-20 flex flex-col items-end gap-2">
+                  <div className="bg-white/90 backdrop-blur p-3 rounded-2xl flex items-center gap-3 shadow-lg">
+                    <Activity className="text-blue-600 animate-pulse" />
+                    <div className="text-right">
+                      <div className="text-[10px] uppercase font-bold text-slate-400 tracking-tighter">Stability</div>
+                      <div className="text-3xl font-black text-slate-800 leading-none">{score}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="absolute bottom-4 left-4 z-20">
+                  <div className="bg-blue-600 text-white px-4 py-1 rounded-full text-xs font-bold animate-bounce">
+                    AI ACTIVE
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Reward/Trophy UI */}
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-amber-100 rounded-2xl flex items-center justify-center text-amber-600">
+                <Trophy size={28} />
+              </div>
+              <div>
+                <div className="h-2 w-32 bg-slate-100 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-amber-400 transition-all duration-1000" 
+                    style={{ width: `${score}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="text-4xl font-black text-slate-200">
+              {score > 80 ? '⭐' : score > 50 ? '👍' : ''}
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Safety Info Footer */}
+      <div className="max-w-4xl mx-auto mt-12 flex justify-center opacity-40 hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-6 grayscale">
+          <img src="https://www.svgrepo.com/show/415516/chair.svg" className="h-10" alt="Use chair" />
+          <img src="https://www.svgrepo.com/show/315935/wall.svg" className="h-10" alt="Use wall" />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default App;
